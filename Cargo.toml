@@ -1,0 +1,9 @@
+[package]
+authors = ["Vogt, Dimitrij <divogt@dima23.de>"]
+edition = "2018"
+name = "book-summary"
+version = "0.1.0"
+
+[dependencies]
+structopt = "*"
+walkdir = "2"
