@@ -1,11 +1,15 @@
 use std::env;
 use std::error::Error;
 use std::fmt;
+use std::fs::File;
+use std::io::prelude::*;
 use std::path::Path;
-use walkdir::{DirEntry, WalkDir};
-
 use std::path::PathBuf;
 use structopt::StructOpt;
+use walkdir::{DirEntry, WalkDir};
+
+mod book;
+use book::Chapter;
 
 #[derive(Debug, PartialEq)]
 enum SummaryError {
@@ -64,56 +68,6 @@ struct Opt {
     dir: PathBuf,
 }
 
-#[derive(Debug, PartialEq)]
-struct Chapter {
-    name: String,
-    files: Vec<String>,
-    chapter: Vec<Chapter>,
-}
-
-impl Chapter {
-    fn new(name: String, entries: &Vec<String>) -> Chapter {
-        let mut chapter = Chapter {
-            name,
-            files: vec![],
-            chapter: vec![],
-        };
-
-        chapter.add_entries(entries);
-
-        chapter
-    }
-
-    fn add_entries(&mut self, entries: &Vec<String>) {
-        for entry in entries.into_iter() {
-            if entry.contains('/') {
-                let splits: Vec<&str> = entry.split('/').collect();
-                let chapter: Option<&mut Chapter>;
-
-                let chapter_exists = self.chapter.iter().any(|c| c.name == splits[0].to_string());
-
-                if chapter_exists {
-                    chapter = self
-                        .chapter
-                        .iter_mut()
-                        .find(|c| c.name == splits[0].to_string());
-                    if let Some(chapter) = chapter {
-                        chapter.files.push(splits[splits.len() - 1].to_string());
-                    }
-                } else {
-                    self.chapter.push(Chapter {
-                        name: splits[0].to_string(),
-                        files: vec![splits[splits.len() - 1].to_string()],
-                        chapter: vec![],
-                    })
-                }
-            } else {
-                self.files.push(entry.to_string());
-            }
-        }
-    }
-}
-
 fn main() {
     let mut opt = Opt::from_args();
 
@@ -139,6 +93,12 @@ fn main() {
     //    let book = create_chapter(&entries, opt.title);
 
     let book = Chapter::new(opt.title, &entries);
+
+    create_file(
+        &opt.dir.to_str().unwrap(),
+        &opt.outputfile.to_str().unwrap(),
+        &book.get_summary_file(&opt.format),
+    );
 
     println!("BOOK: {:#?}", book);
 
@@ -179,109 +139,21 @@ fn get_dir(dir: &PathBuf) -> Result<Vec<String>> {
     Ok(entries)
 }
 
-fn get_summary_file(book: Chapter, format: &str) -> String {
-    // create markdown summary file
-    /*
-    gitbook format:
-    # Summary
+fn create_file(path: &str, filename: &str, content: &str) {
+    let filepath = format!("{}/{}", path, filename);
+    let path = Path::new(&filepath);
+    let display = path.display();
 
-    * [First page's title](page1/README.md)
-        * [Some child page](page1/page1-1.md)
-        * [Some other child page](part1/page1-2.md)
-    * [Second page's title](page2/README.md)
-        * [Some child page](page2/page2-1.md)
-        * [Some other child page](part2/page2-2.md)
-
-    mdbook format:
-    # Summary
-
-    - [mdBook](README.md)
-    - [Command Line Tool](cli/README.md)
-        - [init](cli/init.md)
-        - [build](cli/build.md)
-        - [watch](cli/watch.md)
-        - [serve](cli/serve.md)
-        - [test](cli/test.md)
-        - [clean](cli/clean.md)
-    */
-
-    let mut summary: String = "".to_string();
-    let list_char = match format {
-        "md" => '-',
-        "git" => '*',
-        _ => ' ',
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("Couldn't create {}: {}", display, why.description()),
+        Ok(file) => file,
     };
 
-    // add title
-    summary.push_str(&format!("# {}\n\n", book.name));
-
-    // add book files
-    summary.push_str(&get_files_md(".", &book.files, &list_char));
-    summary.push_str("\n");
-
-    // add chapter with files
-    for chapter in book.chapter.into_iter() {
-        if chapter.files.contains(&"README.md".to_string()) {
-            summary.push_str(&format!(
-                "{} [{}]({}/README.md)",
-                list_char,
-                make_title_case(&chapter.name),
-                chapter.name
-            ));
-            summary.push_str("\n\r");
-        } else {
-            summary.push_str(&format!(
-                "{} [{}]()",
-                list_char,
-                make_title_case(&chapter.name)
-            ));
-            summary.push_str("\n\r");
-        }
-
-        summary.push_str(&get_files_md(&chapter.name, &chapter.files, &list_char));
-    }
-
-    summary
-}
-
-fn get_files_md(path: &str, files: &Vec<String>, list_char: &char) -> String {
-    let mut output: String = "".to_string();
-
-    for file in files {
-        output.push_str(&format!(
-            "{} [{}]({})",
-            list_char,
-            get_title_capture(&file),
-            format!("{}/{}", path, file)
-        ));
-    }
-
-    output
-}
-
-fn make_title_case(name: &str) -> String {
-    let mut c = name.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().chain(c).collect(),
-    }
-}
-
-fn get_title_capture(path: &str) -> String {
-    let full_path = Path::new(path);
-    let parent = full_path.parent().unwrap();
-    let file_name = full_path.file_stem().unwrap();
-    let extension = full_path.extension();
-
-    println!(
-        "path: {:?}, parent: {:?}, filename; {:?}",
-        full_path, parent, file_name
-    );
-
-    let mut c = file_name.to_str().unwrap().chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().chain(c).collect(),
+    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
+    match file.write_all(content.as_bytes()) {
+        Err(why) => panic!("Couldn't write to {}: {}", display, why.description()),
+        Ok(_) => println!("Successfully create {}", display),
     }
 }
 
@@ -403,7 +275,7 @@ mod tests {
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, get_summary_file(book, "md"));
+        assert_eq!(expected, book.get_summary_file("md"));
     }
 
     #[test]
@@ -412,12 +284,12 @@ mod tests {
         let input: Vec<String> = vec!["file1.md".to_string(), "chapter1/file1.md".to_string()];
 
         let expected: &str = &format!(
-            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\r- [File1](chapter1/file1.md)",
+            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](chapter1/file1.md)",
             TITLE, LIST_CHAR
         );
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, get_summary_file(book, "md"));
+        assert_eq!(expected, book.get_summary_file("md"));
     }
 }
