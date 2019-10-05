@@ -1,9 +1,9 @@
 # book-summary
-> Creates automatically a SUMMARY.md file for your book (`mdbook/gitbook`)
+> Automatically creates a SUMMARY.md file for your book (`mdbook/gitbook`)
 
-Simultan to the `npm` version of the auto-summary tool [gh/imfly/gitbook-summary](https://github.com/imfly/gitbook-summary), here a `rust` version.
+Similar to the `npm` version of the auto-summary tool [gh/imfly/gitbook-summary](https://github.com/imfly/gitbook-summary), here is a `rust` version.
 
-My initial intention is to get a sortation of chapters without rename my chapter folders with a prefix number. So the `-s` option takes the name of chapters wich would be prefered. I use it in my personal notes repository: [notes](https://github.com/dvogt23/notes)
+My initial intention is to get the chapters sorted without having to rename the chapter folders with a prefix number. The `-s` option takes the name of the chapters wich should come first. I use it in my personal notes repository: [notes](https://github.com/dvogt23/notes)
 
 ## Installation
 
@@ -19,7 +19,7 @@ make install
 
 ```sh
 # create a SUMMARY.md file with custom sort in mdBook format
-$ book-summary -n ./notes -sort tech,personal
+$ book-summary -n ./notes --sort tech,personal
 ```
 
 ```sh
@@ -45,7 +45,7 @@ OPTIONS:
 
 ## Contributing
 
-Feel free to open a pull request or only a issue to contribute to this project.
+Feel free to open a pull request or an issue to contribute to this project.
 
 ## Authors
 
@@ -55,4 +55,4 @@ See also the list of [contributors](https://github.com/dvogt23/book-summary/cont
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
