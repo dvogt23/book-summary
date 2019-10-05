@@ -15,37 +15,32 @@ impl Chapter {
             chapter: vec![],
         };
 
-        chapter.add_entries(entries);
+        for entry in entries {
+            chapter.add_entry(entry.split("/").collect::<Vec<_>>());
+        }
 
         chapter
     }
 
-    pub fn add_entries(&mut self, entries: &Vec<String>) {
-        for entry in entries.into_iter() {
-            if entry.contains('/') {
-                let splits: Vec<&str> = entry.split('/').collect();
-                let chapter: Option<&mut Chapter>;
-
-                let chapter_exists = self.chapter.iter().any(|c| c.name == splits[0].to_string());
-
-                if chapter_exists {
-                    chapter = self
-                        .chapter
-                        .iter_mut()
-                        .find(|c| c.name == splits[0].to_string());
-                    if let Some(chapter) = chapter {
-                        chapter.files.push(splits[splits.len() - 1].to_string());
-                    }
+    // This is a recursive function to add new chapters and files to an existing chapter.
+    pub fn add_entry(&mut self, entry: Vec<&str>) {
+        match entry.len() {
+            x if x > 1 => {
+                if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == entry[0]) {
+                    chapter.add_entry(entry[1..].to_owned())
                 } else {
-                    self.chapter.push(Chapter {
-                        name: splits[0].to_string(),
-                        files: vec![splits[splits.len() - 1].to_string()],
+                    let mut chapter = Chapter {
+                        name: entry[0].to_string(),
+                        files: vec![],
                         chapter: vec![],
-                    })
+                    };
+                    chapter.add_entry(entry[1..].to_owned());
+
+                    self.chapter.push(chapter);
                 }
-            } else {
-                self.files.push(entry.to_string());
             }
+            x if x == 1 => self.files.push(entry[0].to_string()),
+            _ => unreachable!(),
         }
     }
 
