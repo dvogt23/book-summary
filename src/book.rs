@@ -24,23 +24,21 @@ impl Chapter {
 
     // This is a recursive function to add new chapters and files to an existing chapter.
     pub fn add_entry(&mut self, entry: Vec<&str>) {
-        match entry.len() {
-            x if x > 1 => {
-                if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == entry[0]) {
-                    chapter.add_entry(entry[1..].to_owned())
-                } else {
-                    let mut chapter = Chapter {
-                        name: entry[0].to_string(),
-                        files: vec![],
-                        chapter: vec![],
-                    };
-                    chapter.add_entry(entry[1..].to_owned());
+        if entry.len() > 1 {
+            if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == entry[0]) {
+                chapter.add_entry(entry[1..].to_owned())
+            } else {
+                let mut chapter = Chapter {
+                    name: entry[0].to_string(),
+                    files: vec![],
+                    chapter: vec![],
+                };
+                chapter.add_entry(entry[1..].to_owned());
 
-                    self.chapter.push(chapter);
-                }
+                self.chapter.push(chapter);
             }
-            x if x == 1 => self.files.push(entry[0].to_string()),
-            _ => unreachable!(),
+        } else {
+            self.files.push(entry[0].to_string())
         }
     }
 
