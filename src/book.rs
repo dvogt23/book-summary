@@ -15,33 +15,32 @@ impl Chapter {
             chapter: vec![],
         };
 
-        // chapter.add_entries(entries);
-        for i in entries {
-            chapter.add_entry(i);
+        for entry in entries {
+            chapter.add_entry(entry.split("/").collect::<Vec<_>>());
         }
 
         chapter
     }
 
     // This is a recursive function to add new chapters and files to an existing chapter.
-    pub fn add_entry(&mut self, entry: &str) {
-        if entry.contains('/') {
-            let splits = entry.split('/').collect::<Vec<_>>();
+    pub fn add_entry(&mut self, entry: Vec<&str>) {
+        match entry.len() {
+            x if x > 1 => {
+                if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == entry[0]) {
+                    chapter.add_entry(entry[1..].to_owned())
+                } else {
+                    let mut chapter = Chapter {
+                        name: entry[0].to_string(),
+                        files: vec![],
+                        chapter: vec![],
+                    };
+                    chapter.add_entry(entry[1..].to_owned());
 
-            if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == splits[0]) {
-                chapter.add_entry(&splits[1..].join("/"))
-            } else {
-                let mut chapter = Chapter {
-                    name: splits[0].to_string(),
-                    files: vec![],
-                    chapter: vec![],
-                };
-                chapter.add_entry(&splits[1..].join("/"));
-
-                self.chapter.push(chapter);
+                    self.chapter.push(chapter);
+                }
             }
-        } else {
-            self.files.push(entry.to_string());
+            x if x == 1 => self.files.push(entry[0].to_string()),
+            _ => unreachable!(),
         }
     }
 
