@@ -15,37 +15,33 @@ impl Chapter {
             chapter: vec![],
         };
 
-        chapter.add_entries(entries);
+        // chapter.add_entries(entries);
+        for i in entries {
+            chapter.add_entry(i);
+        }
 
         chapter
     }
 
-    pub fn add_entries(&mut self, entries: &Vec<String>) {
-        for entry in entries.into_iter() {
-            if entry.contains('/') {
-                let splits: Vec<&str> = entry.split('/').collect();
-                let chapter: Option<&mut Chapter>;
+    // This is a recursive function to add new chapters and files to an existing chapter.
+    pub fn add_entry(&mut self, entry: &str) {
+        if entry.contains('/') {
+            let splits = entry.split('/').collect::<Vec<_>>();
 
-                let chapter_exists = self.chapter.iter().any(|c| c.name == splits[0].to_string());
-
-                if chapter_exists {
-                    chapter = self
-                        .chapter
-                        .iter_mut()
-                        .find(|c| c.name == splits[0].to_string());
-                    if let Some(chapter) = chapter {
-                        chapter.files.push(splits[splits.len() - 1].to_string());
-                    }
-                } else {
-                    self.chapter.push(Chapter {
-                        name: splits[0].to_string(),
-                        files: vec![splits[splits.len() - 1].to_string()],
-                        chapter: vec![],
-                    })
-                }
+            if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == splits[0]) {
+                chapter.add_entry(&splits[1..].join("/"))
             } else {
-                self.files.push(entry.to_string());
+                let mut chapter = Chapter {
+                    name: splits[0].to_string(),
+                    files: vec![],
+                    chapter: vec![],
+                };
+                chapter.add_entry(&splits[1..].join("/"));
+
+                self.chapter.push(chapter);
             }
+        } else {
+            self.files.push(entry.to_string());
         }
     }
 
