@@ -54,14 +54,8 @@ struct Opt {
     sort: Option<Vec<String>>,
 
     /// Output file
-    #[structopt(
-        name = "outputfile",
-        short,
-        long,
-        default_value = "SUMMARY.md",
-        parse(from_os_str)
-    )]
-    outputfile: PathBuf,
+    #[structopt(name = "outputfile", short, long, default_value = "SUMMARY.md")]
+    outputfile: String,
 
     /// Notes dir where to parse all your notes from
     #[structopt(name = "notesdir", short, long, default_value = "./")]
@@ -85,7 +79,7 @@ fn main() {
         println!("Error: Path {} not found!", opt.dir.display());
     }
 
-    let entries = match get_dir(&opt.dir) {
+    let entries = match get_dir(&opt.dir, &opt.outputfile) {
         Ok(e) => e,
         Err(err) => panic!(err),
     };
@@ -96,7 +90,7 @@ fn main() {
 
     create_file(
         &opt.dir.to_str().unwrap(),
-        &opt.outputfile.to_str().unwrap(),
+        &opt.outputfile,
         &book.get_summary_file(&opt.format),
     );
 
@@ -113,7 +107,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
         .unwrap_or(false)
 }
 
-fn get_dir(dir: &PathBuf) -> Result<Vec<String>> {
+fn get_dir(dir: &PathBuf, outputfile: &str) -> Result<Vec<String>> {
     let mut entries: Vec<String> = vec![];
     for direntry in WalkDir::new(dir)
         .sort_by(|a, b| a.file_name().cmp(b.file_name()))
@@ -132,7 +126,10 @@ fn get_dir(dir: &PathBuf) -> Result<Vec<String>> {
             .chars()
             .skip(dir.to_str().unwrap().len() + 1)
             .collect::<String>();
-        if !entry.is_empty() && (entry.contains("/") || entry.contains(".md")) {
+        if !entry.is_empty()
+            && !entry.eq(outputfile)
+            && (entry.contains("/") || entry.contains(".md"))
+        {
             entries.push(entry);
         }
     }
@@ -181,7 +178,10 @@ mod tests {
             "chapter3/file2.md".to_string(),
             "chapter3/file3.md".to_string(),
         ]);
-        assert_eq!(expected, get_dir(&PathBuf::from(r"./examples/book")));
+        assert_eq!(
+            expected,
+            get_dir(&PathBuf::from(r"./examples/book"), &"SUMMARY.md")
+        );
     }
 
     #[test]
