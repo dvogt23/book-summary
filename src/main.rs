@@ -119,6 +119,7 @@ fn get_dir(dir: &PathBuf, outputfile: &str) -> Result<Vec<String>> {
         // - given root folder
         // - plain dirnames
         // - not md files
+        // - not SUMMARY.md file
         let entry = direntry
             .path()
             .to_str()
@@ -282,6 +283,24 @@ mod tests {
     fn md_output_onechapter_test() {
         // only one file
         let input: Vec<String> = vec!["file1.md".to_string(), "chapter1/file1.md".to_string()];
+
+        let expected: &str = &format!(
+            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](chapter1/file1.md)",
+            TITLE, LIST_CHAR
+        );
+
+        let book = Chapter::new(TITLE.to_string(), &input);
+
+        assert_eq!(expected, book.get_summary_file("md"));
+    }
+
+    #[test]
+    fn md_output_subchapter_test() {
+        // only one file
+        let input: Vec<String> = vec![
+            "chapter1/file1.md".to_string(),
+            "chapter1/subchap/file1.md".to_string(),
+        ];
 
         let expected: &str = &format!(
             "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](chapter1/file1.md)",
