@@ -1,5 +1,6 @@
 # book-summary
 
+![book-summary-check build status](https://github.com/dvogt23/book-summary/workflows/check/badge.svg)
 ![book-summary-tests build status](https://github.com/dvogt23/book-summary/workflows/test/badge.svg)
 
 > Automatically creates a SUMMARY.md file for your book (`mdbook/gitbook`)
