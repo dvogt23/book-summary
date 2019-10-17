@@ -16,29 +16,34 @@ impl Chapter {
         };
 
         for entry in entries {
-            chapter.add_entry(entry.split("/").collect::<Vec<_>>());
+            chapter.add_entry(entry.split("/").collect::<Vec<_>>(), "");
         }
 
         chapter
     }
 
     // This is a recursive function to add new chapters and files to an existing chapter.
-    pub fn add_entry(&mut self, entry: Vec<&str>) {
+    pub fn add_entry(&mut self, entry: Vec<&str>, root: &str) {
+        let new_root = match root {
+            "" => entry[0].to_string(),
+            _ => format!("{}/{}", root, entry[0]),
+        };
+
         if entry.len() > 1 {
             if let Some(chapter) = self.chapter.iter_mut().find(|c| c.name == entry[0]) {
-                chapter.add_entry(entry[1..].to_owned())
+                chapter.add_entry(entry[1..].to_owned(), &new_root)
             } else {
                 let mut chapter = Chapter {
                     name: entry[0].to_string(),
                     files: vec![],
                     chapter: vec![],
                 };
-                chapter.add_entry(entry[1..].to_owned());
+                chapter.add_entry(entry[1..].to_owned(), &new_root);
 
                 self.chapter.push(chapter);
             }
         } else {
-            self.files.push(entry[0].to_string())
+            self.files.push(new_root)
         }
     }
 
@@ -101,7 +106,7 @@ impl Chapter {
                 summary.push_str("\n\t");
             }
 
-            summary.push_str(&get_files_md(&chapter.name, &chapter.files, &list_char));
+            summary.push_str(&get_files_md(".", &chapter.files, &list_char));
         }
 
         summary
