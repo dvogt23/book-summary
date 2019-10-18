@@ -94,7 +94,7 @@ fn main() {
         &book.get_summary_file(&opt.format),
     );
 
-    println!("BOOK: {:#?}", book);
+    dbg!(&book);
 
     // sort_filelist(&mut entries, opt.sort.as_ref());
 }
@@ -226,7 +226,7 @@ mod tests {
             files: vec![],
             chapter: vec![Chapter {
                 name: "chapter1".to_string(),
-                files: vec!["file1.md".to_string()],
+                files: vec!["chapter1/file1.md".to_string()],
                 chapter: vec![],
             }],
         };
@@ -249,10 +249,10 @@ mod tests {
             files: vec![],
             chapter: vec![Chapter {
                 name: "chapter1".to_string(),
-                files: vec!["file1.md".to_string()],
+                files: vec!["chapter1/file1.md".to_string()],
                 chapter: vec![Chapter {
                     name: "subchap".to_string(),
-                    files: vec!["file1.md".to_string()],
+                    files: vec!["chapter1/subchap/file1.md".to_string()],
                     chapter: vec![],
                 }],
             }],
@@ -285,7 +285,7 @@ mod tests {
         let input: Vec<String> = vec!["file1.md".to_string(), "chapter1/file1.md".to_string()];
 
         let expected: &str = &format!(
-            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](chapter1/file1.md)",
+            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](./chapter1/file1.md)",
             TITLE, LIST_CHAR
         );
 
