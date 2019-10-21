@@ -2,6 +2,7 @@ use std::env;
 use std::error::Error;
 use std::fmt;
 use std::fs::File;
+use std::io;
 use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
@@ -77,6 +78,7 @@ fn main() {
 
     if !opt.dir.is_dir() {
         println!("Error: Path {} not found!", opt.dir.display());
+        return ();
     }
 
     let entries = match get_dir(&opt.dir, &opt.outputfile) {
@@ -84,7 +86,20 @@ fn main() {
         Err(err) => panic!(err),
     };
 
-    //    let book = create_chapter(&entries, opt.title);
+    if Path::new(&opt.outputfile).exists() {
+        loop {
+            println!(
+                "File {} already exists, do you want to overwrite it? [Y/n]",
+                &opt.outputfile
+            );
+            let mut input = String::new();
+            match io::stdin().read_line(&mut input) {
+                Ok(_) if &input == "y\n" || &input == "Y\n" || &input == "\n" => break,
+                Ok(_) if &input == "n\n" || &input == "N\n" => return,
+                _ => {}
+            }
+        }
+    }
 
     let book = Chapter::new(opt.title, &entries);
 
