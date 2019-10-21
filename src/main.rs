@@ -61,6 +61,10 @@ struct Opt {
     /// Notes dir where to parse all your notes from
     #[structopt(name = "notesdir", short, long, default_value = "./")]
     dir: PathBuf,
+
+    /// Overwrite existing SUMMARY.md file
+    #[structopt(name = "yes", short, long = "overwrite")]
+    yes: bool,
 }
 
 fn main() {
@@ -77,16 +81,20 @@ fn main() {
     }
 
     if !opt.dir.is_dir() {
-        println!("Error: Path {} not found!", opt.dir.display());
-        return ();
+        eprintln!("Error: Path {} not found!", opt.dir.display());
+        std::process::exit(1)
     }
 
     let entries = match get_dir(&opt.dir, &opt.outputfile) {
         Ok(e) => e,
-        Err(err) => panic!(err),
+        Err(err) => {
+            eprintln!("Error: {:?}", err);
+            std::process::exit(1)
+        }
     };
 
-    if Path::new(&opt.outputfile).exists() {
+    // SUMMARY.md file check if exists
+    if Path::new(&format!("{}/{}", &opt.dir.display(), &opt.outputfile)).exists() && !opt.yes {
         loop {
             println!(
                 "File {} already exists, do you want to overwrite it? [Y/n]",
@@ -109,9 +117,9 @@ fn main() {
         &book.get_summary_file(&opt.format),
     );
 
-    dbg!(&book);
-
-    // sort_filelist(&mut entries, opt.sort.as_ref());
+    if opt.verbose > 2 {
+        dbg!(&book);
+    }
 }
 
 fn is_hidden(entry: &DirEntry) -> bool {
