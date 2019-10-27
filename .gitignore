@@ -33,3 +33,6 @@ Cargo.lock
 
 # End of https://www.gitignore.io/api/rust,linux
 examples/book/SUMMARY.md
+.gdb_history
+SUMMARY.md
+examples/book/_book/
