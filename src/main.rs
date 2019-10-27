@@ -109,12 +109,21 @@ fn main() {
         }
     }
 
+    if opt.verbose > 2 {
+        dbg!(&entries);
+    }
+
     let book = Chapter::new(opt.title, &entries);
 
     create_file(
         &opt.dir.to_str().unwrap(),
         &opt.outputfile,
-        &book.get_summary_file(&opt.format),
+        // &book.get_summary_file(&opt.format),
+        &book.get_summary_file(match opt.format.as_ref() {
+            "md" => &'-',
+            "git" => &'*',
+            _ => &' ',
+        }),
     );
 
     if opt.verbose > 2 {
@@ -152,7 +161,8 @@ fn get_dir(dir: &PathBuf, outputfile: &str) -> Result<Vec<String>> {
             .collect::<String>();
         if !entry.is_empty()
             && !entry.eq(outputfile)
-            && (entry.contains("/") || entry.contains(".md"))
+            && !entry.to_lowercase().eq("readme.md")
+            && entry.contains(".md")
         {
             entries.push(entry);
         }
@@ -196,7 +206,6 @@ mod tests {
             "chapter2/FILE1.md".to_string(),
             "chapter2/README.md".to_string(),
             "chapter2/file2.md".to_string(),
-            "chapter2/subchap".to_string(),
             "chapter2/subchap/info.md".to_string(),
             "chapter3/file1.md".to_string(),
             "chapter3/file2.md".to_string(),
@@ -295,11 +304,12 @@ mod tests {
         // only one file
         let input: Vec<String> = vec!["file1.md".to_string()];
 
-        let expected: &str = &format!("# {}\n\n{} [File1](./file1.md)\n", TITLE, LIST_CHAR);
+        let expected: &str = &format!("# {}\n\n{} [File1](file1.md)\n", TITLE, LIST_CHAR);
 
         let book = Chapter::new(TITLE.to_string(), &input);
+        dbg!(&book);
 
-        assert_eq!(expected, book.get_summary_file("md"));
+        assert_eq!(expected, book.get_summary_file(&'-'));
     }
 
     #[test]
@@ -308,13 +318,13 @@ mod tests {
         let input: Vec<String> = vec!["file1.md".to_string(), "chapter1/file1.md".to_string()];
 
         let expected: &str = &format!(
-            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](./chapter1/file1.md)",
+            "# {}\n\n{} [File1](file1.md)\n- Chapter1\n    - [File1](chapter1/file1.md)\n",
             TITLE, LIST_CHAR
         );
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file("md"));
+        assert_eq!(expected, book.get_summary_file(&'-'));
     }
 
     #[test]
@@ -326,12 +336,38 @@ mod tests {
         ];
 
         let expected: &str = &format!(
-            "# {}\n\n{} [File1](./file1.md)\n- [Chapter1]()\n\t- [File1](chapter1/file1.md)",
+            "# {0}\n\n{1} Chapter1\n    {1} [File1](chapter1/file1.md)\n    {1} Subchap\n        - [File1](chapter1/subchap/file1.md)\n",
             TITLE, LIST_CHAR
         );
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file("md"));
+        assert_eq!(expected, book.get_summary_file(&'-'));
+    }
+
+    #[test]
+    fn md_simple_structure_test() {
+        let input = vec![
+            "part1/README.md".to_string(),
+            "part1/WritingIsGood.md".to_string(),
+            "part1/GitbookIsNice.md".to_string(),
+            "part2/README.md".to_string(),
+            "part2/First_part_of_part_2.md".to_string(),
+            "part2/Second_part_of_part_2.md".to_string(),
+        ];
+
+        let expected = r#"# Summary
+
+- [Part1](part1/README.md)
+    - [WritingIsGood](part1/WritingIsGood.md)
+    - [GitbookIsNice](part1/GitbookIsNice.md)
+- [Part2](part2/README.md)
+    - [First Part of Part 2](part2/First_part_of_part_2.md)
+    - [Second Part of Part 2](part2/Second_part_of_part_2.md)
+"#;
+
+        let book = Chapter::new(TITLE.to_string(), &input);
+
+        assert_eq!(expected, book.get_summary_file(&'-'));
     }
 }

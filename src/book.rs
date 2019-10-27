@@ -1,4 +1,5 @@
 use std::path::Path;
+use titlecase::titlecase;
 
 #[derive(Debug, PartialEq)]
 pub struct Chapter {
@@ -23,7 +24,7 @@ impl Chapter {
     }
 
     // This is a recursive function to add new chapters and files to an existing chapter.
-    pub fn add_entry(&mut self, entry: Vec<&str>, root: &str) {
+    fn add_entry(&mut self, entry: Vec<&str>, root: &str) {
         let new_root = match root {
             "" => entry[0].to_string(),
             _ => format!("{}/{}", root, entry[0]),
@@ -47,7 +48,7 @@ impl Chapter {
         }
     }
 
-    pub fn get_summary_file(&self, format: &str) -> String {
+    pub fn get_summary_file(&self, list_char: &char) -> String {
         // create markdown summary file
         /*
         gitbook format:
@@ -74,82 +75,88 @@ impl Chapter {
         */
 
         let mut summary: String = "".to_string();
-        let list_char = match format {
-            "md" => '-',
-            "git" => '*',
-            _ => ' ',
-        };
-
-        // add title
         summary.push_str(&format!("# {}\n\n", self.name));
+        summary += &print_files(&self.files, &list_char, 0);
+        for c in &self.chapter {
+            summary += &c.create_tree_for_summary(list_char, 0);
+        }
+        summary
+    }
 
-        // add book files
-        summary.push_str(&get_files_md(".", &self.files, &list_char));
-        summary.push_str("\n");
-
-        // add chapter with files
-        for chapter in self.chapter.iter() {
-            if chapter.files.contains(&"README.md".to_string()) {
-                summary.push_str(&format!(
-                    "{} [{}]({}/README.md)",
-                    list_char,
-                    make_title_case(&chapter.name),
-                    chapter.name
-                ));
-                summary.push_str("\n\t");
-            } else {
-                summary.push_str(&format!(
-                    "{} [{}]()",
-                    list_char,
-                    make_title_case(&chapter.name)
-                ));
-                summary.push_str("\n\t");
-            }
-
-            summary.push_str(&get_files_md(".", &chapter.files, &list_char));
+    fn create_tree_for_summary(&self, list_char: &char, indent: usize) -> String {
+        let mut summary: String = " ".repeat(4 * indent);
+        if let Some(readme) = self
+            .files
+            .iter()
+            .filter(|f| f.to_lowercase().ends_with("/readme.md"))
+            .nth(0)
+        {
+            summary += &format!(
+                "{} [{}]({})\n",
+                list_char,
+                make_title_case(&self.name),
+                readme
+            )
+        } else {
+            summary.push_str(&format!("{} {}\n", list_char, make_title_case(&self.name)));
         }
 
+        summary += &print_files(&self.files, list_char, indent + 1);
+
+        for c in &self.chapter {
+            summary += &c.create_tree_for_summary(list_char, indent + 1);
+        }
         summary
     }
 }
 
-fn get_files_md(path: &str, files: &Vec<String>, list_char: &char) -> String {
-    let mut output: String = "".to_string();
-
-    for file in files {
-        output.push_str(&format!(
-            "{} [{}]({})",
-            list_char,
-            get_title_capture(&file),
-            format!("{}/{}", path, file)
-        ));
-    }
-
-    output
+fn print_files(files: &Vec<String>, list_char: &char, indent: usize) -> String {
+    files
+        .iter()
+        .filter(|f| !f.to_lowercase().ends_with("/readme.md"))
+        .map(|f| {
+            format!(
+                "{}{} [{}]({})\n",
+                " ".repeat(4 * indent),
+                list_char,
+                make_title_case(Path::new(&f).file_stem().unwrap().to_str().unwrap()),
+                &f
+            )
+        })
+        .collect::<Vec<String>>()
+        .join("")
 }
 
 fn make_title_case(name: &str) -> String {
-    let mut c = name.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().chain(c).collect(),
-    }
+    titlecase(
+        &name
+            .chars()
+            .skip_while(|c| !c.is_alphabetic())
+            .map(|c| if c == '_' { ' ' } else { c })
+            .collect::<String>(),
+    )
 }
 
-fn get_title_capture(path: &str) -> String {
-    let full_path = Path::new(path);
-    let parent = full_path.parent().unwrap();
-    let file_name = full_path.file_stem().unwrap();
-    let extension = full_path.extension();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // println!(
-    // "path: {:?}, parent: {:?}, filename; {:?}",
-    // full_path, parent, file_name
-    // );
+    #[test]
+    fn titlecase_test() {
+        assert_eq!("Chapter 1", make_title_case("1-chapter_1"));
+        assert_eq!("Chapter 23", make_title_case("chapter_23"));
+    }
 
-    let mut c = file_name.to_str().unwrap().chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().chain(c).collect(),
+    #[test]
+    fn file_print_test() {
+        let expected = r#"- [WritingIsGood](part1/WritingIsGood.md)
+- [GitbookIsNice](part1/GitbookIsNice.md)
+"#;
+        let input = vec![
+            "part1/README.md".to_string(),
+            "part1/WritingIsGood.md".to_string(),
+            "part1/GitbookIsNice.md".to_string(),
+        ];
+        assert_eq!(expected, print_files(&input, &'-', 0));
     }
 }
