@@ -8,15 +8,14 @@ use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use walkdir::{DirEntry, WalkDir};
+use toml::Value;
+use serde_json::Value as jsonValue;
 
 mod book;
 use book::Chapter;
 
 #[derive(Debug, PartialEq)]
-enum SummaryError {
-    UnknownPath,
-    TooSmall,
-}
+enum SummaryError {}
 
 impl fmt::Display for SummaryError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -50,7 +49,7 @@ struct Opt {
     #[structopt(name = "title", short, long, default_value = "Summary")]
     title: String,
 
-    /// Default sort by asc, but first start with following chapters
+    /// Start with following chapters
     #[structopt(name = "sort", short, long)]
     sort: Option<Vec<String>>,
 
@@ -59,7 +58,7 @@ struct Opt {
     outputfile: String,
 
     /// Notes dir where to parse all your notes from
-    #[structopt(name = "notesdir", short, long, default_value = "./")]
+    #[structopt(name = "notesdir", short, long, default_value = ".")]
     dir: PathBuf,
 
     /// Overwrite existing SUMMARY.md file
@@ -74,6 +73,16 @@ fn main() {
     if opt.verbose > 2 {
         println!("{:?}", opt);
         println!("{:?}", env::current_dir().unwrap().display());
+    }
+
+    // parse book.js OR book.toml
+    match opt.format.as_ref() {
+        "md" => parse_config_file(&format!("{}{}", opt.dir.display(), "/book.toml"), &mut opt),
+        "git" => {
+             parse_config_file(&format!("{}{}", opt.dir.display(), "/book.json"), &mut opt);
+             parse_config_file(&format!("{}{}", opt.dir.display(), "/book.js"), &mut opt);
+        },
+        _ => unimplemented!(),
     }
 
     if opt.dir == PathBuf::from("./") {
@@ -170,6 +179,79 @@ fn get_dir(dir: &PathBuf, outputfile: &str) -> Result<Vec<String>> {
     Ok(entries)
 }
 
+fn parse_config_file(path: &str, opt: &mut Opt) {
+    let path = Path::new(path);
+
+    if !path.exists() {
+        if opt.verbose > 2 {
+            eprintln!("Book config file {} not found.", path.display());
+        }
+        return;
+    }
+
+    let mut file = match File::open(&path) {
+        Err(why) => panic!("Error: Couldn't open {}: {}", path.display(), why.description()),
+        Ok(file) => file,
+    };
+
+    let mut content = String::new();
+    match file.read_to_string(&mut content) {
+        Err(why) => panic!("Error: Couldn't read {}: {}", path.display(), why.description()),
+        Ok(_) => {}, 
+    }
+
+    if opt.verbose > 2 {
+        println!("Found book config file: {}", path.display());
+    }
+
+    let ext: &str = path.extension().unwrap().to_str().unwrap();
+
+    match ext {
+        "toml" => {
+            let values = content.parse::<Value>().unwrap();
+            if opt.dir.to_str().eq(&Some(".")) {
+                if let Some(src) = values["book"]["src"].as_str() {
+                    if opt.verbose > 2 {
+                        println!("Found `src` in book.toml: {}", src);
+                    }
+                    opt.dir = PathBuf::from(src);
+                }
+            }
+
+            if opt.title.eq("Summary") {
+                if let Some(title) = values["book"]["title"].as_str() {
+                    if opt.verbose > 2 {
+                        println!("Found `title` in book.toml: {}", title);
+                    }
+                    opt.title = title.to_string();
+                }
+            }
+        },
+        "js" | "json" => {
+            let values: jsonValue = serde_json::from_str(&content).unwrap();
+            if opt.dir.to_str().eq(&Some(".")) {
+                if let Some(src) = values["root"].as_str() {
+                    if opt.verbose > 2 {
+                        println!("Found `root` in book.{}: {}", ext, src);
+                    }
+                    opt.dir = PathBuf::from(src);
+                }
+            }
+
+            if opt.title.eq("Summary") {
+                if let Some(title) = values["title"].as_str() {
+                    if opt.verbose > 2 {
+                        println!("Found `title` in book.{}: {}", ext, title);
+                    }
+                    opt.title = title.to_string();
+                }
+            }
+        },
+        _ => {},
+
+    }
+}
+
 fn create_file(path: &str, filename: &str, content: &str) {
     let filepath = format!("{}/{}", path, filename);
     let path = Path::new(&filepath);
@@ -213,7 +295,7 @@ mod tests {
         ]);
         assert_eq!(
             expected,
-            get_dir(&PathBuf::from(r"./examples/book"), &"SUMMARY.md")
+            get_dir(&PathBuf::from(r"./examples/gitbook/book"), &"SUMMARY.md")
         );
     }
 
@@ -369,5 +451,37 @@ mod tests {
         let book = Chapter::new(TITLE.to_string(), &input);
 
         assert_eq!(expected, book.get_summary_file(&'-'));
+    }
+
+    #[test]
+    fn parse_config_test() {
+        let bookjson = "./examples/gitbook/book.json";
+        let booktoml = "./examples/mdbook/book.toml";
+
+        // opt with default values
+        let mut opt = Opt {
+            debug: false,
+            verbose: 3,
+            mdheader: false,
+            format: "md".to_string(),
+            title: "Summary".to_string(),
+            sort: None,
+            outputfile: "SUMMARY.md".to_string(),
+            dir: PathBuf::from("."),
+            yes: true,
+        };
+
+        parse_config_file(booktoml, &mut opt);
+
+        assert_eq!("src", format!("{}", opt.dir.display()));
+        assert_eq!("MyMDBook", opt.title);
+
+        opt.dir = PathBuf::from(".");
+        opt.title = "Summary".to_string();
+
+        parse_config_file(bookjson, &mut opt);
+
+        assert_eq!("book", format!("{}", opt.dir.display()));
+        assert_eq!("My title", opt.title);
     }
 }

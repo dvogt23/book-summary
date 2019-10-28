@@ -1,6 +1,3 @@
 [book]
-authors = ["Vogt, Dimitrij"]
-language = "en"
-multilingual = false
 src = "src"
 title = "MyMDBook"

@@ -4,7 +4,17 @@ edition = "2018"
 name = "book-summary"
 version = "0.1.0"
 
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+debug = false
+
 [dependencies]
 structopt = "*"
 walkdir = "2"
 titlecase = "0.10"
+serde_json = "1.0"
+toml = "0.5"
