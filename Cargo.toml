@@ -2,6 +2,14 @@
 authors = ["Vogt, Dimitrij <divogt@dima23.de>"]
 edition = "2018"
 name = "book-summary"
+description = "Create automatically a summary file for gitbook/mdbook"
+homepage = "https://github.com/dvogt23/book-summary"
+documentation = "https://github.com/dvogt23/book-summary"
+repository = "https://github.com/dvogt23/book-summary"
+readme = "README.md"
+license = "MIT"
+keywords = ["gitbook", "mdbook", "summary"]
+categories = ["command-line-utilities"]
 version = "0.1.0"
 
 [profile.dev]
@@ -13,7 +21,7 @@ opt-level = 3
 debug = false
 
 [dependencies]
-structopt = "*"
+structopt = "0.3.1"
 walkdir = "2"
 titlecase = "0.10"
 serde_json = "1.0"

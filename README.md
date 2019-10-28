@@ -2,6 +2,9 @@
 
 ![book-summary-check build status](https://github.com/dvogt23/book-summary/workflows/check/badge.svg)
 ![book-summary-tests build status](https://github.com/dvogt23/book-summary/workflows/test/badge.svg)
+<a href="https://crates.io/crates/book-summary"
+    ><img src="https://badgen.net/crates/v/book-summary" alt="crates.io"
+  /></a>
 
 > Automatically creates a SUMMARY.md file for your book (`mdbook/gitbook`)
 
