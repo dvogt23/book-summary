@@ -1,3 +1,4 @@
+use serde_json::Value as jsonValue;
 use std::env;
 use std::error::Error;
 use std::fmt;
@@ -7,9 +8,8 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use walkdir::{DirEntry, WalkDir};
 use toml::Value;
-use serde_json::Value as jsonValue;
+use walkdir::{DirEntry, WalkDir};
 
 mod book;
 use book::Chapter;
@@ -79,9 +79,9 @@ fn main() {
     match opt.format.as_ref() {
         "md" => parse_config_file(&format!("{}{}", opt.dir.display(), "/book.toml"), &mut opt),
         "git" => {
-             parse_config_file(&format!("{}{}", opt.dir.display(), "/book.json"), &mut opt);
-             parse_config_file(&format!("{}{}", opt.dir.display(), "/book.js"), &mut opt);
-        },
+            parse_config_file(&format!("{}{}", opt.dir.display(), "/book.json"), &mut opt);
+            parse_config_file(&format!("{}{}", opt.dir.display(), "/book.js"), &mut opt);
+        }
         _ => unimplemented!(),
     }
 
@@ -128,11 +128,14 @@ fn main() {
         &opt.dir.to_str().unwrap(),
         &opt.outputfile,
         // &book.get_summary_file(&opt.format),
-        &book.get_summary_file(match opt.format.as_ref() {
-            "md" => &'-',
-            "git" => &'*',
-            _ => &' ',
-        }),
+        &book.get_summary_file(
+            match opt.format.as_ref() {
+                "md" => &'-',
+                "git" => &'*',
+                _ => &' ',
+            },
+            &opt.sort,
+        ),
     );
 
     if opt.verbose > 2 {
@@ -190,14 +193,22 @@ fn parse_config_file(path: &str, opt: &mut Opt) {
     }
 
     let mut file = match File::open(&path) {
-        Err(why) => panic!("Error: Couldn't open {}: {}", path.display(), why.description()),
+        Err(why) => panic!(
+            "Error: Couldn't open {}: {}",
+            path.display(),
+            why.description()
+        ),
         Ok(file) => file,
     };
 
     let mut content = String::new();
     match file.read_to_string(&mut content) {
-        Err(why) => panic!("Error: Couldn't read {}: {}", path.display(), why.description()),
-        Ok(_) => {}, 
+        Err(why) => panic!(
+            "Error: Couldn't read {}: {}",
+            path.display(),
+            why.description()
+        ),
+        Ok(_) => {}
     }
 
     if opt.verbose > 2 {
@@ -226,7 +237,7 @@ fn parse_config_file(path: &str, opt: &mut Opt) {
                     opt.title = title.to_string();
                 }
             }
-        },
+        }
         "js" | "json" => {
             let values: jsonValue = serde_json::from_str(&content).unwrap();
             if opt.dir.to_str().eq(&Some(".")) {
@@ -246,9 +257,8 @@ fn parse_config_file(path: &str, opt: &mut Opt) {
                     opt.title = title.to_string();
                 }
             }
-        },
-        _ => {},
-
+        }
+        _ => {}
     }
 }
 
@@ -391,7 +401,7 @@ mod tests {
         let book = Chapter::new(TITLE.to_string(), &input);
         dbg!(&book);
 
-        assert_eq!(expected, book.get_summary_file(&'-'));
+        assert_eq!(expected, book.get_summary_file(&'-', &None));
     }
 
     #[test]
@@ -406,7 +416,7 @@ mod tests {
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file(&'-'));
+        assert_eq!(expected, book.get_summary_file(&'-', &None));
     }
 
     #[test]
@@ -424,7 +434,7 @@ mod tests {
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file(&'-'));
+        assert_eq!(expected, book.get_summary_file(&'-', &None));
     }
 
     #[test]
@@ -450,7 +460,7 @@ mod tests {
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file(&'-'));
+        assert_eq!(expected, book.get_summary_file(&'-', &None));
     }
 
     #[test]
@@ -483,5 +493,43 @@ mod tests {
 
         assert_eq!("book", format!("{}", opt.dir.display()));
         assert_eq!("My title", opt.title);
+    }
+
+    #[test]
+    fn sort_chapter_test() {
+        let input = vec![
+            "part1/README.md".to_string(),
+            "part1/WritingIsGood.md".to_string(),
+            "part2/GitbookIsNice.md".to_string(),
+            "part2/README.md".to_string(),
+            "part3/file.md".to_string(),
+            "part4/file.md".to_string(),
+        ];
+
+        let expected = r#"# Summary
+
+- Part4
+    - [File](part4/file.md)
+- Part3
+    - [File](part3/file.md)
+- [Part1](part1/README.md)
+    - [WritingIsGood](part1/WritingIsGood.md)
+- [Part2](part2/README.md)
+    - [GitbookIsNice](part2/GitbookIsNice.md)
+"#;
+
+        let book = Chapter::new(TITLE.to_string(), &input);
+
+        assert_eq!(
+                expected,
+                book.get_summary_file(
+                    &'-',
+                    &Some(vec![
+                        "part4".to_string(),
+                        "part5".to_string(),
+                        "part3".to_string()
+                    ])
+                )
+        );
     }
 }

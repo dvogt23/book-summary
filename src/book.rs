@@ -48,7 +48,11 @@ impl Chapter {
         }
     }
 
-    pub fn get_summary_file(&self, list_char: &char) -> String {
+    pub fn get_summary_file(
+        &self,
+        list_char: &char,
+        prefered_chapter: &Option<Vec<String>>,
+    ) -> String {
         // create markdown summary file
         /*
         gitbook format:
@@ -74,11 +78,27 @@ impl Chapter {
             - [clean](cli/clean.md)
         */
 
+        let indent_level = 0;
         let mut summary: String = "".to_string();
         summary.push_str(&format!("# {}\n\n", self.name));
-        summary += &print_files(&self.files, &list_char, 0);
+        summary += &print_files(&self.files, &list_char, indent_level);
+
+        // first prefered chapters (sort)
+        if let Some(chapter_names) = prefered_chapter {
+            for chapter_name in chapter_names {
+                if let Some(chapter) = self.chapter.iter().find(|c| c.name.eq(chapter_name)) {
+                    summary += &chapter.create_tree_for_summary(list_char, indent_level);
+                }
+            }
+        }
+
         for c in &self.chapter {
-            summary += &c.create_tree_for_summary(list_char, 0);
+            if let Some(chapter_names) = prefered_chapter {
+                if chapter_names.contains(&c.name) {
+                    continue;
+                }
+            }
+            summary += &c.create_tree_for_summary(list_char, indent_level);
         }
         summary
     }
