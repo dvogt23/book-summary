@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["gitbook", "mdbook", "summary"]
 categories = ["command-line-utilities"]
-version = "0.1.0"
+version = "0.2.0"
 
 [profile.dev]
 opt-level = 0
