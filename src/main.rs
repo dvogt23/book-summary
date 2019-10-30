@@ -13,6 +13,7 @@ use walkdir::{DirEntry, WalkDir};
 
 mod book;
 use book::Chapter;
+use book::Format;
 
 #[derive(Debug, PartialEq)]
 enum SummaryError {}
@@ -43,13 +44,13 @@ struct Opt {
 
     /// Format md/git book
     #[structopt(name = "format", short, long, default_value = "md")]
-    format: String,
+    format: Format,
 
     /// Title for summary
     #[structopt(name = "title", short, long, default_value = "Summary")]
     title: String,
 
-    /// Start with following chapters
+    /// Start with following chapters (space seperate)
     #[structopt(name = "sort", short, long)]
     sort: Option<Vec<String>>,
 
@@ -76,13 +77,12 @@ fn main() {
     }
 
     // parse book.js OR book.toml
-    match opt.format.as_ref() {
-        "md" => parse_config_file(&format!("{}{}", opt.dir.display(), "/book.toml"), &mut opt),
-        "git" => {
+    match opt.format {
+        Format::Md(_) => parse_config_file(&format!("{}{}", opt.dir.display(), "/book.toml"), &mut opt),
+        Format::Git(_) => {
             parse_config_file(&format!("{}{}", opt.dir.display(), "/book.json"), &mut opt);
             parse_config_file(&format!("{}{}", opt.dir.display(), "/book.js"), &mut opt);
-        }
-        _ => unimplemented!(),
+        },
     }
 
     if opt.dir == PathBuf::from("./") {
@@ -128,14 +128,7 @@ fn main() {
         &opt.dir.to_str().unwrap(),
         &opt.outputfile,
         // &book.get_summary_file(&opt.format),
-        &book.get_summary_file(
-            match opt.format.as_ref() {
-                "md" => &'-',
-                "git" => &'*',
-                _ => &' ',
-            },
-            &opt.sort,
-        ),
+        &book.get_summary_file(&opt.format, &opt.sort),
     );
 
     if opt.verbose > 2 {
@@ -286,7 +279,7 @@ mod tests {
     use super::*;
 
     const TITLE: &str = "Summary";
-    const LIST_CHAR: char = '-';
+    const FORMAT: Format = Format::Git('*');
 
     // # get file list: no hidden files, filepaths from given folder as root
     #[test]
@@ -393,34 +386,49 @@ mod tests {
     //      - remove pre numbers in entry
     #[test]
     fn md_output_onefile_test() {
+        let list_char: char = match FORMAT {
+            Format::Md(c) => c,
+            Format::Git(c) => c,
+        };
+
         // only one file
         let input: Vec<String> = vec!["file1.md".to_string()];
 
-        let expected: &str = &format!("# {}\n\n{} [File1](file1.md)\n", TITLE, LIST_CHAR);
+        let expected: &str = &format!("# {}\n\n{} [File1](file1.md)\n", TITLE, list_char);
 
         let book = Chapter::new(TITLE.to_string(), &input);
         dbg!(&book);
 
-        assert_eq!(expected, book.get_summary_file(&'-', &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
     }
 
     #[test]
     fn md_output_onechapter_test() {
+        let list_char: char = match FORMAT {
+            Format::Md(c) => c,
+            Format::Git(c) => c,
+        };
+
         // only one file
         let input: Vec<String> = vec!["file1.md".to_string(), "chapter1/file1.md".to_string()];
 
         let expected: &str = &format!(
-            "# {}\n\n{} [File1](file1.md)\n- Chapter1\n    - [File1](chapter1/file1.md)\n",
-            TITLE, LIST_CHAR
+            "# {0}\n\n{1} [File1](file1.md)\n{1} Chapter1\n    {1} [File1](chapter1/file1.md)\n",
+            TITLE, list_char
         );
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file(&'-', &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
     }
 
     #[test]
     fn md_output_subchapter_test() {
+        let list_char: char = match FORMAT {
+            Format::Md(c) => c,
+            Format::Git(c) => c,
+        };
+
         // only one file
         let input: Vec<String> = vec![
             "chapter1/file1.md".to_string(),
@@ -428,13 +436,13 @@ mod tests {
         ];
 
         let expected: &str = &format!(
-            "# {0}\n\n{1} Chapter1\n    {1} [File1](chapter1/file1.md)\n    {1} Subchap\n        - [File1](chapter1/subchap/file1.md)\n",
-            TITLE, LIST_CHAR
+            "# {0}\n\n{1} Chapter1\n    {1} [File1](chapter1/file1.md)\n    {1} Subchap\n        {1} [File1](chapter1/subchap/file1.md)\n",
+            TITLE, list_char
         );
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file(&'-', &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
     }
 
     #[test]
@@ -450,17 +458,17 @@ mod tests {
 
         let expected = r#"# Summary
 
-- [Part1](part1/README.md)
-    - [WritingIsGood](part1/WritingIsGood.md)
-    - [GitbookIsNice](part1/GitbookIsNice.md)
-- [Part2](part2/README.md)
-    - [First Part of Part 2](part2/First_part_of_part_2.md)
-    - [Second Part of Part 2](part2/Second_part_of_part_2.md)
+* [Part1](part1/README.md)
+    * [WritingIsGood](part1/WritingIsGood.md)
+    * [GitbookIsNice](part1/GitbookIsNice.md)
+* [Part2](part2/README.md)
+    * [First Part of Part 2](part2/First_part_of_part_2.md)
+    * [Second Part of Part 2](part2/Second_part_of_part_2.md)
 "#;
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
-        assert_eq!(expected, book.get_summary_file(&'-', &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
     }
 
     #[test]
@@ -473,7 +481,7 @@ mod tests {
             debug: false,
             verbose: 3,
             mdheader: false,
-            format: "md".to_string(),
+            format: FORMAT,
             title: "Summary".to_string(),
             sort: None,
             outputfile: "SUMMARY.md".to_string(),
@@ -508,28 +516,28 @@ mod tests {
 
         let expected = r#"# Summary
 
-- Part4
-    - [File](part4/file.md)
-- Part3
-    - [File](part3/file.md)
-- [Part1](part1/README.md)
-    - [WritingIsGood](part1/WritingIsGood.md)
-- [Part2](part2/README.md)
-    - [GitbookIsNice](part2/GitbookIsNice.md)
+* Part4
+    * [File](part4/file.md)
+* Part3
+    * [File](part3/file.md)
+* [Part1](part1/README.md)
+    * [WritingIsGood](part1/WritingIsGood.md)
+* [Part2](part2/README.md)
+    * [GitbookIsNice](part2/GitbookIsNice.md)
 "#;
 
         let book = Chapter::new(TITLE.to_string(), &input);
 
         assert_eq!(
-                expected,
-                book.get_summary_file(
-                    &'-',
-                    &Some(vec![
-                        "part4".to_string(),
-                        "part5".to_string(),
-                        "part3".to_string()
-                    ])
-                )
+            expected,
+            book.get_summary_file(
+                &FORMAT,
+                &Some(vec![
+                    "PART4".to_string(),
+                    "part5".to_string(),
+                    "part3".to_string()
+                ])
+            )
         );
     }
 }

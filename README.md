@@ -30,7 +30,7 @@ make install
 
 ```sh
 # create a SUMMARY.md file with custom sort in mdBook format
-$ book-summary -n ./notes --sort tech,personal
+$ book-summary -n ./notes --sort tech personal
 ```
 
 ```sh
