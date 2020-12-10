@@ -1,6 +1,5 @@
 use serde_json::Value as jsonValue;
 use std::env;
-use std::error::Error;
 use std::fmt;
 use std::fs::File;
 use std::io;
@@ -140,7 +139,7 @@ fn is_hidden(entry: &DirEntry) -> bool {
     entry
         .file_name()
         .to_str()
-        .map(|s| s.starts_with("."))
+        .map(|s| s.starts_with('.'))
         .unwrap_or(false)
 }
 
@@ -189,20 +188,18 @@ fn parse_config_file(path: &str, opt: &mut Opt) {
         Err(why) => panic!(
             "Error: Couldn't open {}: {}",
             path.display(),
-            why.description()
+            why.to_string()
         ),
         Ok(file) => file,
     };
 
     let mut content = String::new();
-    match file.read_to_string(&mut content) {
-        Err(why) => panic!(
-            "Error: Couldn't read {}: {}",
-            path.display(),
-            why.description()
-        ),
-        Ok(_) => {}
-    }
+
+    if let Err(why) = file.read_to_string(&mut content) { panic!(
+        "Error: Couldn't read {}: {}",
+        path.display(),
+        why.to_string()
+    ) }
 
     if opt.verbose > 2 {
         println!("Found book config file: {}", path.display());
@@ -262,13 +259,13 @@ fn create_file(path: &str, filename: &str, content: &str) {
 
     // Open a file in write-only mode, returns `io::Result<File>`
     let mut file = match File::create(&path) {
-        Err(why) => panic!("Couldn't create {}: {}", display, why.description()),
+        Err(why) => panic!("Couldn't create {}: {}", display, why.to_string()),
         Ok(file) => file,
     };
 
     // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
     match file.write_all(content.as_bytes()) {
-        Err(why) => panic!("Couldn't write to {}: {}", display, why.description()),
+        Err(why) => panic!("Couldn't write to {}: {}", display, why.to_string()),
         Ok(_) => println!("Successfully create {}", display),
     }
 }
