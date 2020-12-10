@@ -29,7 +29,7 @@ pub struct Chapter {
 }
 
 impl Chapter {
-    pub fn new(name: String, entries: &Vec<String>) -> Chapter {
+    pub fn new(name: String, entries: &[String]) -> Chapter {
         let mut chapter = Chapter {
             name,
             files: vec![],
@@ -37,7 +37,7 @@ impl Chapter {
         };
 
         for entry in entries {
-            chapter.add_entry(entry.split("/").collect::<Vec<_>>(), "");
+            chapter.add_entry(entry.split('/').collect::<Vec<_>>(), "");
         }
 
         chapter
@@ -125,8 +125,7 @@ impl Chapter {
                 if chapter_names
                     .iter()
                     .map(|n| n.to_lowercase())
-                    .collect::<Vec<String>>()
-                    .contains(&c.name.to_lowercase())
+                    .any(|x| x == c.name.to_lowercase())
                 {
                     continue;
                 }
@@ -152,8 +151,7 @@ impl Chapter {
         if let Some(readme) = self
             .files
             .iter()
-            .filter(|f| f.to_lowercase().ends_with("/readme.md"))
-            .nth(0)
+            .find(|f| f.to_lowercase().ends_with("/readme.md"))
         {
             summary += &format!(
                 "{} [{}]({})\n",
@@ -185,7 +183,7 @@ impl Chapter {
     }
 }
 
-fn print_files(files: &Vec<String>, list_char: &char, indent: usize) -> String {
+fn print_files(files: &[String], list_char: &char, indent: usize) -> String {
     files
         .iter()
         .filter(|f| !f.to_lowercase().ends_with("/readme.md"))
