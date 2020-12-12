@@ -156,19 +156,13 @@ fn get_dir(dir: &PathBuf, outputfile: &str) -> Result<Vec<String>> {
         // - plain dirnames
         // - not md files
         // - not SUMMARY.md file
-        let entry = direntry
-            .path()
-            .to_str()
-            .unwrap()
-            .chars()
-            .skip(dir.to_str().unwrap().len() + 1)
-            .collect::<String>();
+        let entry = direntry.path().strip_prefix(dir).unwrap().to_str().unwrap();
         if !entry.is_empty()
             && !entry.eq(outputfile)
             && !entry.to_lowercase().eq("readme.md")
             && entry.contains(".md")
         {
-            entries.push(entry);
+            entries.push(entry.to_owned());
         }
     }
     Ok(entries)
