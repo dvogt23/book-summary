@@ -23,6 +23,6 @@ debug = false
 [dependencies]
 structopt = "0.3.1"
 walkdir = "2"
-titlecase = "0.10"
+titlecase = "2.2.1"
 serde_json = "1.0"
 toml = "0.5"
