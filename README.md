@@ -53,6 +53,10 @@ OPTIONS:
     -t, --title <title>              Title for summary [default: Summary]
 ```
 
+## mdBook Preprocessor
+
+If you need mdbook preprocessor functionality (generating SUMMARY.md as part of the mdbook build), see [mdbook-auto-gen-summary](https://github.com/knightflower1989/mdbook-auto-gen-summary) mentioned in [issue #24](https://github.com/dvogt23/book-summary/issues/24).
+
 ## Contributing
 
 Feel free to open a pull request or an issue to contribute to this project.
