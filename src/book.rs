@@ -26,14 +26,16 @@ pub struct Chapter {
     pub name: String,
     pub files: Vec<String>,
     pub chapter: Vec<Chapter>,
+    pub mdheader: bool,
 }
 
 impl Chapter {
-    pub fn new(name: String, entries: &[String]) -> Chapter {
+    pub fn new(name: String, entries: &[String], mdheader: bool) -> Chapter {
         let mut chapter = Chapter {
             name,
             files: vec![],
             chapter: vec![],
+            mdheader,
         };
 
         for entry in entries {
@@ -58,6 +60,7 @@ impl Chapter {
                     name: entry[0].to_string(),
                     files: vec![],
                     chapter: vec![],
+                    mdheader: false,
                 };
                 chapter.add_entry(entry[1..].to_owned(), &new_root);
 
@@ -68,7 +71,7 @@ impl Chapter {
         }
     }
 
-    pub fn get_summary_file(&self, format: &Format, prefered_chapter: &Option<Vec<String>>) -> String {
+    pub fn get_summary_file(&self, format: &Format, prefered_chapter: &Option<Vec<String>>, mdheader: bool) -> String {
         // create markdown summary file
         /*
         gitbook format:
@@ -98,8 +101,8 @@ impl Chapter {
         let mut summary: String = "".to_string();
         summary.push_str(&format!("# {}\n\n", self.name));
         match format {
-            Format::Md(list_char) => summary += &print_files(&self.files, list_char, indent_level),
-            Format::Git(list_char) => summary += &print_files(&self.files, list_char, indent_level),
+            Format::Md(list_char) => summary += &print_files(&self.files, list_char, indent_level, mdheader),
+            Format::Git(list_char) => summary += &print_files(&self.files, list_char, indent_level, mdheader),
         }
 
         // first prefered chapters (sort)
@@ -110,12 +113,7 @@ impl Chapter {
                     .iter()
                     .find(|c| c.name.to_lowercase() == chapter_name.to_lowercase())
                 {
-                    summary += &chapter.create_tree_for_summary(&format, indent_level);
-
-                    // match format {
-                        // Format::Md(list_char) => summary += &chapter.create_tree_for_summary(list_char, indent_level),
-                        // Format::Git(list_char) => summary += &chapter.create_tree_for_summary(list_char, indent_level),
-                    // }
+                    summary += &chapter.create_tree_for_summary(&format, indent_level, mdheader);
                 }
             }
         }
@@ -131,17 +129,12 @@ impl Chapter {
                 }
             }
 
-            summary += &c.create_tree_for_summary(&format, indent_level);
-
-            // match format {
-                // Format::Md(list_char) => summary += &c.create_tree_for_summary(list_char, indent_level),
-                // Format::Git(list_char) => summary += &c.create_tree_for_summary(list_char, indent_level),
-            // }
+            summary += &c.create_tree_for_summary(&format, indent_level, mdheader);
         }
         summary
     }
 
-    fn create_tree_for_summary(&self, format: &Format, indent: usize) -> String {
+    fn create_tree_for_summary(&self, format: &Format, indent: usize, mdheader: bool) -> String {
         let mut summary: String = " ".repeat(4 * indent);
         let list_char = match format {
             Format::Md(c) => c,
@@ -174,30 +167,44 @@ impl Chapter {
             }
         }
 
-        summary += &print_files(&self.files, list_char, indent + 1);
+        summary += &print_files(&self.files, list_char, indent + 1, mdheader);
 
         for c in &self.chapter {
-            summary += &c.create_tree_for_summary(&format, indent + 1);
+            summary += &c.create_tree_for_summary(&format, indent + 1, mdheader);
         }
         summary
     }
 }
 
-fn print_files(files: &[String], list_char: &char, indent: usize) -> String {
+fn print_files(files: &[String], list_char: &char, indent: usize, mdheader: bool) -> String {
     files
         .iter()
         .filter(|f| !f.to_lowercase().ends_with("/readme.md"))
         .map(|f| {
+            let title = if mdheader {
+                get_first_header(&f).unwrap_or_else(|| make_title_case(Path::new(&f).file_stem().unwrap().to_str().unwrap()))
+            } else {
+                make_title_case(Path::new(&f).file_stem().unwrap().to_str().unwrap())
+            };
             format!(
                 "{}{} [{}]({})\n",
                 " ".repeat(4 * indent),
                 list_char,
-                make_title_case(Path::new(&f).file_stem().unwrap().to_str().unwrap()),
+                title,
                 percent_encode_path(&f)
             )
         })
         .collect::<Vec<String>>()
         .join("")
+}
+
+/// Extract the first H1 header (# Header) from a markdown file
+fn get_first_header(file_path: &str) -> Option<String> {
+    let full_path = Path::new(file_path);
+    let content = std::fs::read_to_string(full_path).ok()?;
+    content.lines()
+        .find(|line| line.starts_with("# "))
+        .map(|line| line.trim_start_matches("# ").trim().to_string())
 }
 
 /// Percent-encode a path for CommonMark spec compliance.
@@ -248,7 +255,7 @@ mod tests {
             "part1/WritingIsGood.md".to_string(),
             "part1/GitbookIsNice.md".to_string(),
         ];
-        assert_eq!(expected, print_files(&input, &'-', 0));
+        assert_eq!(expected, print_files(&input, &'-', 0, false));
     }
 
     #[test]

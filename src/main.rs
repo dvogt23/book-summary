@@ -121,13 +121,13 @@ fn main() {
         dbg!(&entries);
     }
 
-    let book = Chapter::new(opt.title, &entries);
+    let book = Chapter::new(opt.title, &entries, opt.mdheader);
 
     create_file(
         &opt.dir.to_str().unwrap(),
         &opt.outputfile,
         // &book.get_summary_file(&opt.format),
-        &book.get_summary_file(&opt.format, &opt.sort),
+        &book.get_summary_file(&opt.format, &opt.sort, opt.mdheader),
     );
 
     if opt.verbose > 2 {
@@ -302,9 +302,10 @@ mod tests {
             name: TITLE.to_string(),
             files: vec![],
             chapter: vec![],
+            mdheader: false,
         };
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
         assert_eq!(expected, book);
     }
@@ -317,9 +318,10 @@ mod tests {
             name: TITLE.to_string(),
             files: vec!["file.md".to_string()],
             chapter: vec![],
+            mdheader: false,
         };
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
         assert_eq!(expected, book);
     }
@@ -336,10 +338,12 @@ mod tests {
                 name: "chapter1".to_string(),
                 files: vec!["chapter1/file1.md".to_string()],
                 chapter: vec![],
+                mdheader: false,
             }],
+            mdheader: false,
         };
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
         assert_eq!(expected, book);
     }
@@ -362,11 +366,14 @@ mod tests {
                     name: "subchap".to_string(),
                     files: vec!["chapter1/subchap/file1.md".to_string()],
                     chapter: vec![],
+                    mdheader: false,
                 }],
+                mdheader: false,
             }],
+            mdheader: false,
         };
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
         assert_eq!(expected, book);
     }
@@ -387,10 +394,10 @@ mod tests {
 
         let expected: &str = &format!("# {}\n\n{} [File1](file1.md)\n", TITLE, list_char);
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
         dbg!(&book);
 
-        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None, false));
     }
 
     #[test]
@@ -408,9 +415,9 @@ mod tests {
             TITLE, list_char
         );
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
-        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None, false));
     }
 
     #[test]
@@ -431,9 +438,9 @@ mod tests {
             TITLE, list_char
         );
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
-        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None, false));
     }
 
     #[test]
@@ -457,9 +464,9 @@ mod tests {
     * [Second Part of Part 2](part2/Second_part_of_part_2.md)
 "#;
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
-        assert_eq!(expected, book.get_summary_file(&FORMAT, &None));
+        assert_eq!(expected, book.get_summary_file(&FORMAT, &None, false));
     }
 
     #[test]
@@ -517,7 +524,7 @@ mod tests {
     * [GitbookIsNice](part2/GitbookIsNice.md)
 "#;
 
-        let book = Chapter::new(TITLE.to_string(), &input);
+        let book = Chapter::new(TITLE.to_string(), &input, false);
 
         assert_eq!(
             expected,
@@ -527,7 +534,8 @@ mod tests {
                     "PART4".to_string(),
                     "part5".to_string(),
                     "part3".to_string()
-                ])
+                ]),
+                false
             )
         );
     }
