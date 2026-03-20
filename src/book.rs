@@ -157,7 +157,7 @@ impl Chapter {
                 "{} [{}]({})\n",
                 list_char,
                 make_title_case(&self.name),
-                readme
+                percent_encode_path(readme)
             )
         } else {
             match format {
@@ -193,11 +193,28 @@ fn print_files(files: &[String], list_char: &char, indent: usize) -> String {
                 " ".repeat(4 * indent),
                 list_char,
                 make_title_case(Path::new(&f).file_stem().unwrap().to_str().unwrap()),
-                &f
+                percent_encode_path(&f)
             )
         })
         .collect::<Vec<String>>()
         .join("")
+}
+
+/// Percent-encode a path for CommonMark spec compliance.
+/// CommonMark doesn't allow spaces and certain special characters in link destinations
+/// unless they are percent-encoded or wrapped in angle brackets.
+fn percent_encode_path(path: &str) -> String {
+    let needs_encoding = path.chars().any(|c| {
+        c.is_whitespace() || c == '#' || c == '[' || c == ']' || c == '<' || c == '>'
+    });
+
+    if needs_encoding {
+        // Use angle brackets syntax for better readability: [text](<path>)
+        // This is CommonMark compliant and more readable than percent-encoding
+        format!("<{}>", path)
+    } else {
+        path.to_string()
+    }
 }
 
 fn make_title_case(name: &str) -> String {
@@ -232,5 +249,17 @@ mod tests {
             "part1/GitbookIsNice.md".to_string(),
         ];
         assert_eq!(expected, print_files(&input, &'-', 0));
+    }
+
+    #[test]
+    fn percent_encode_path_test() {
+        // No encoding needed
+        assert_eq!("normal/path/file.md", percent_encode_path("normal/path/file.md"));
+        // Space needs encoding (angle brackets)
+        assert_eq!("<path with spaces/file.md>", percent_encode_path("path with spaces/file.md"));
+        // Hash needs encoding
+        assert_eq!("<path#hash/file.md>", percent_encode_path("path#hash/file.md"));
+        // Multiple special chars
+        assert_eq!("<path [special]/file.md>", percent_encode_path("path [special]/file.md"));
     }
 }
