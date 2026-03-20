@@ -47,11 +47,45 @@ FLAGS:
 
 OPTIONS:
     -f, --format <format>            Format md/git book [default: md]
+    -k, --marker <marker>            Only update content between marker comments
     -n, --notesdir <notesdir>        Notes dir where to parse all your notes from [default: ./]
     -o, --outputfile <outputfile>    Output file [default: SUMMARY.md]
     -s, --sort <sort>...             Start with following chapters
     -t, --title <title>              Title for summary [default: Summary]
 ```
+
+## Partial Updates with Markers
+
+Use `--marker` / `-k` to partially update a SUMMARY.md file. This keeps static sections (like a preamble or final words) intact while only regenerating the auto-generated content.
+
+**First run** - creates SUMMARY.md with marker comments:
+```sh
+book-summary -k auto
+```
+
+**Subsequent runs** - only updates content between markers:
+```sh
+book-summary -k auto
+```
+
+**Example:**
+
+Given a SUMMARY.md:
+```markdown
+# Summary
+
+# Preamble
+- other items
+
+<!-- book-summary-start-auto -->
+# Automatic recollection
+
+<!-- book-summary-end-auto -->
+
+# Final words
+```
+
+Running `book-summary -k auto` will only regenerate the content between the marker comments.
 
 ## mdBook Preprocessor
 

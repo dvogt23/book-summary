@@ -64,6 +64,10 @@ struct Opt {
     /// Overwrite existing SUMMARY.md file
     #[structopt(name = "yes", short, long = "overwrite")]
     yes: bool,
+
+    /// Only update content between marker comments, keeping other sections intact
+    #[structopt(name = "marker", short = "k", long)]
+    marker: Option<String>,
 }
 
 fn main() {
@@ -128,6 +132,7 @@ fn main() {
         &opt.outputfile,
         // &book.get_summary_file(&opt.format),
         &book.get_summary_file(&opt.format, &opt.sort, opt.mdheader),
+        opt.marker.as_deref(),
     );
 
     if opt.verbose > 2 {
@@ -246,10 +251,23 @@ fn parse_config_file(path: &str, opt: &mut Opt) {
     }
 }
 
-fn create_file(path: &str, filename: &str, content: &str) {
+fn create_file(path: &str, filename: &str, content: &str, marker: Option<&str>) {
     let filepath = format!("{}/{}", path, filename);
     let path = Path::new(&filepath);
     let display = path.display();
+
+    let final_content = if let Some(_marker) = marker {
+        // If marker is specified and file exists, do partial update
+        if path.exists() {
+            let existing = std::fs::read_to_string(&path).unwrap_or_default();
+            update_partial_summary(&existing, content, _marker)
+        } else {
+            // No existing file, create with marker wrapper
+            wrap_with_marker(content, _marker)
+        }
+    } else {
+        content.to_string()
+    };
 
     // Open a file in write-only mode, returns `io::Result<File>`
     let mut file = match File::create(&path) {
@@ -257,10 +275,40 @@ fn create_file(path: &str, filename: &str, content: &str) {
         Ok(file) => file,
     };
 
-    // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
-    match file.write_all(content.as_bytes()) {
+    // Write the content to `file`, returns `io::Result<()>`
+    match file.write_all(final_content.as_bytes()) {
         Err(why) => panic!("Couldn't write to {}: {}", display, why.to_string()),
-        Ok(_) => println!("Successfully create {}", display),
+        Ok(_) => println!("Successfully created {}", display),
+    }
+}
+
+/// Wraps content with marker comments
+fn wrap_with_marker(content: &str, marker: &str) -> String {
+    format!(
+        "<!-- book-summary-start-{marker} -->\n{}\n<!-- book-summary-end-{marker} -->",
+        content
+    )
+}
+
+/// Updates only the content between marker comments in an existing summary
+fn update_partial_summary(existing: &str, new_content: &str, marker: &str) -> String {
+    let start_marker = format!("<!-- book-summary-start-{} -->", marker);
+    let end_marker = format!("<!-- book-summary-end-{} -->", marker);
+
+    let start_idx = existing.find(&start_marker);
+    let end_idx = existing.find(&end_marker);
+
+    if let (Some(start), Some(end)) = (start_idx, end_idx) {
+        // Find the actual content start (after newline after start marker)
+        let content_start = start + start_marker.len();
+        // Find the end marker start (before the newline)
+        let before_end = existing[..end].rfind('\n').map(|i| i + 1).unwrap_or(content_start);
+
+        // Replace only the content between markers
+        format!("{}{}{}", &existing[..content_start], new_content, &existing[before_end..])
+    } else {
+        // No existing markers found, append wrapped content
+        format!("{}\n\n{}", existing, wrap_with_marker(new_content, marker))
     }
 }
 
@@ -485,6 +533,7 @@ mod tests {
             outputfile: "SUMMARY.md".to_string(),
             dir: PathBuf::from("."),
             yes: true,
+            marker: None,
         };
 
         parse_config_file(booktoml, &mut opt);
