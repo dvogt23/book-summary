@@ -30,25 +30,23 @@ pub struct Chapter {
 }
 
 impl Chapter {
-        pub fn new(name: String, entries: &[String], mdheader: bool) -> Chapter {
-            
+    pub fn new(name: String, entries: &[String], mdheader: bool) -> Chapter {
+        let mut chapter = Chapter {
+            name,
+            files: vec![],
+            chapter: vec![],
+            mdheader,
+        };
 
-            let mut chapter = Chapter {
-                name,
-                files: vec![],
-                chapter: vec![],
-                mdheader,
-            };
-
-            for entry in entries {
-                chapter.add_entry(entry.split('/').collect::<Vec<_>>(), "");
-            }
-
-            chapter.sort_contents();
-            chapter
+        for entry in entries {
+            chapter.add_entry(entry.split('/').collect::<Vec<_>>(), "");
         }
 
-        fn add_entry(&mut self, entry: Vec<&str>, root: &str) {
+        chapter.sort_contents();
+        chapter
+    }
+
+    fn add_entry(&mut self, entry: Vec<&str>, root: &str) {
         let new_root = match root {
             "" => entry[0].to_string(),
             _ => format!("{}/{}", root, entry[0]),
@@ -154,21 +152,16 @@ impl Chapter {
         } else {
             match format {
                 Format::Md(_) => {
-                    if titlecase(&self.name).to_lowercase().contains("markdown") {
-                        summary.push_str(&format!(
-                        "{} [{}]()\n",
-                        list_char,
-                        titlecase(&self.name)
-                        ))
-                    } else {
-                        summary.push_str(&format!(
-                        "{} [{}]({}.md)\n",
+                    let link = self
+                        .infer_chapter_link()
+                        .unwrap_or_else(|| format!("{}.md", titlecase(&self.name)));
+                    summary.push_str(&format!(
+                        "{} [{}]({})\n",
                         list_char,
                         titlecase(&self.name),
-                        titlecase(&self.name)
-                        ))
-                    }
-                },
+                        percent_encode_path(&link)
+                    ))
+                }
                 Format::Git(_) => {
                     summary.push_str(&format!("{} {}\n", list_char, titlecase(&self.name)))
                 }
@@ -181,6 +174,23 @@ impl Chapter {
             summary += &c.create_tree_for_summary(&format, indent + 1, mdheader);
         }
         summary
+    }
+
+    fn infer_chapter_link(&self) -> Option<String> {
+        let first_path = self.first_content_path()?;
+        let components: Vec<&str> = first_path.split('/').collect();
+
+        components
+            .iter()
+            .position(|component| *component == self.name)
+            .map(|index| format!("{}.md", components[..=index].join("/")))
+    }
+
+    fn first_content_path(&self) -> Option<&str> {
+        self.files
+            .first()
+            .map(String::as_str)
+            .or_else(|| self.chapter.iter().find_map(Chapter::first_content_path))
     }
 }
 
@@ -215,7 +225,7 @@ fn print_files(files: &[String], list_char: &char, indent: usize, mdheader: bool
             } else {
                 get_display_title(f)
             };
-            
+
             format!(
                 "{}{} [{}]({})\n",
                 " ".repeat(4 * indent),
@@ -237,7 +247,14 @@ fn get_display_title(file_path: &str) -> String {
             .unwrap()
             .to_string()
     } else {
-        titlecase(Path::new(file_path).file_stem().unwrap().to_str().unwrap())
+        titlecase(
+            &Path::new(file_path)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('_', " "),
+        )
     }
 }
 
@@ -310,6 +327,24 @@ mod tests {
         assert_eq!(
             "<path [special]/file.md>",
             percent_encode_path("path [special]/file.md")
+        );
+    }
+
+    #[test]
+    fn md_chapter_links_keep_nested_directory_path() {
+        let input = vec!["A/A1/page.md".to_string()];
+        let book = Chapter::new("Summary".to_string(), &input, false);
+
+        let expected = r#"# Summary
+
+- [A](A.md)
+    - [A1](A/A1.md)
+        - [Page](A/A1/page.md)
+"#;
+
+        assert_eq!(
+            expected,
+            book.get_summary_file(&Format::Md('-'), &None, false)
         );
     }
 }
